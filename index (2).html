@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keiko Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F5F2EC; }
+    .ng-app { background: #F5F2EC; color: #0E0E0E; font-family: 'Space Mono', monospace; min-height: 100vh; }
+    .ng-xl { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.03em; line-height: 0.88; }
+    .ng-jp { font-family: 'Noto Sans JP', sans-serif; }
+    .ng-app textarea,
+    .ng-app input[type=text],
+    .ng-app input[type=date],
+    .ng-app input[type=search] {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: transparent; border: none; outline: none;
+      width: 100%; color: #0E0E0E; font-size: 14px; line-height: 1.7;
+    }
+    .ng-app textarea { resize: vertical; }
+    .ng-app textarea::placeholder, .ng-app input::placeholder { color: #E0DBD2; }
+    .ng-btn-p {
+      font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.12em;
+      background: #0E0E0E; color: #F5F2EC; border: none; padding: 9px 22px; cursor: pointer;
+    }
+    .ng-btn-p:hover { background: #D0220A; }
+    .ng-btn-g {
+      font-family: 'Space Mono', monospace; font-size: 11px; background: none;
+      border: 1px solid #0E0E0E; padding: 6px 14px; cursor: pointer; color: #0E0E0E; letter-spacing: 0.04em;
+    }
+    .ng-btn-g:hover { background: #0E0E0E; color: #F5F2EC; }
+    .ng-tag {
+      font-family: 'Space Mono', monospace; font-size: 10px; padding: 3px 10px;
+      border: 1px solid #E0DBD2; background: transparent; cursor: pointer; color: #9A9590; letter-spacing: 0.04em;
+    }
+    .ng-tag:hover { border-color: #0E0E0E; color: #0E0E0E; }
+    .ng-tag.on { background: #D0220A; border-color: #D0220A; color: #F5F2EC; }
+    .ng-card { border-top: 1.5px solid #0E0E0E; padding: 14px 0; cursor: pointer; }
+    .ng-card:hover .ng-card-title { color: #D0220A; }
+    .ng-lbl { font-size: 10px; letter-spacing: 0.14em; color: #9A9590; margin-bottom: 5px; font-family: 'Space Mono', monospace; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = "keiko-logs-v1";
+    const TAGS = ["足さばき", "打突", "受け", "型", "試合稽古", "素振り", "その他"];
+    const S = { red: "#D0220A", black: "#0E0E0E", white: "#F5F2EC", gray: "#9A9590", lightgray: "#E0DBD2" };
+
+    const loadLogs = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+      catch { return []; }
+    };
+    const saveLogs = (logs) => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logs)); } catch {}
+    };
+
+    function fmt(iso) {
+      const d = new Date(iso);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+    }
+
+    function Cross({ size = 12, color = S.red }) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 12 12" style={{ flexShrink: 0 }}>
+          <line x1="6" y1="0" x2="6" y2="12" stroke={color} strokeWidth="1.8" />
+          <line x1="0" y1="6" x2="12" y2="6" stroke={color} strokeWidth="1.8" />
+        </svg>
+      );
+    }
+
+    function Star({ size = 18 }) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 18 18">
+          {[0, 45, 90, 135].map(a => (
+            <line key={a} x1="9" y1="1" x2="9" y2="17" stroke={S.red} strokeWidth="1.5"
+              transform={`rotate(${a} 9 9)`} />
+          ))}
+          <circle cx="9" cy="9" r="2" fill={S.red} />
+        </svg>
+      );
+    }
+
+    function LogCard({ log, idx, onClick, onDelete }) {
+      return (
+        <div className="ng-card" onClick={onClick}>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <span className="ng-xl" style={{ fontSize: 42, color: S.lightgray, lineHeight: 1, flexShrink: 0, width: 56, textAlign: "right" }}>
+              {String(idx + 1).padStart(2, "0")}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.1em", color: S.gray, marginBottom: 5, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <span>{fmt(log.date)}</span>
+                {log.tags?.map(t => <span key={t} style={{ color: S.red }}>#{t}</span>)}
+              </div>
+              <p className="ng-card-title ng-jp" style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, marginBottom: 5 }}>
+                {log.title || "（タイトルなし）"}
+              </p>
+              {log.content && (
+                <p style={{ fontSize: 12, color: S.gray, lineHeight: 1.6, fontFamily: "'Noto Sans JP', sans-serif",
+                  overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  {log.content}
+                </p>
+              )}
+            </div>
+            <button onClick={e => { e.stopPropagation(); onDelete(log.id); }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: S.lightgray, fontSize: 20, padding: "0 4px", flexShrink: 0 }}>×</button>
+          </div>
+        </div>
+      );
+    }
+
+    function LogDetail({ log, onClose, onDelete, onEdit }) {
+      return (
+        <div>
+          <div style={{ borderBottom: `1.5px solid ${S.black}`, paddingBottom: 14, marginBottom: 24,
+            display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button className="ng-btn-g" onClick={onClose}>← BACK</button>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <button onClick={onEdit} style={{ background: "none", border: "none", cursor: "pointer",
+                fontSize: 11, color: S.black, fontFamily: "Space Mono, monospace",
+                letterSpacing: "0.06em", borderBottom: `1px solid ${S.black}`, paddingBottom: 1 }}>EDIT</button>
+              <button onClick={() => onDelete(log.id)} style={{ background: "none", border: "none",
+                cursor: "pointer", fontSize: 11, color: S.red, fontFamily: "Space Mono, monospace",
+                letterSpacing: "0.06em" }}>DELETE</button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {log.tags?.map(t => <span key={t} className="ng-tag on">{t}</span>)}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 4, gap: 12 }}>
+            <h1 className="ng-xl" style={{ fontSize: window.innerWidth < 480 ? 48 : 72, flex: 1, wordBreak: "break-all" }}>
+              {log.title ? log.title.toUpperCase() : "LOG"}
+            </h1>
+            <span style={{ fontSize: 11, color: S.gray, paddingBottom: 8, flexShrink: 0 }}>{fmt(log.date)}</span>
+          </div>
+
+          <div style={{ borderTop: `1px solid ${S.lightgray}`, margin: "20px 0" }} />
+
+          {log.content && (
+            <div style={{ borderLeft: `3px solid ${S.red}`, paddingLeft: 14, marginBottom: 22 }}>
+              <div className="ng-lbl">/ MEMO</div>
+              <p className="ng-jp" style={{ fontSize: 14, lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{log.content}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function LogForm({ onSave, onCancel, initial }) {
+      const today = new Date().toISOString().split("T")[0];
+      const [form, setForm] = useState(initial || { date: today, title: "", tags: [], content: "" });
+      const isEdit = !!initial;
+      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+      const toggleTag = tag => set("tags", form.tags.includes(tag) ? form.tags.filter(t => t !== tag) : [...form.tags, tag]);
+
+      return (
+        <div>
+          <div style={{ borderBottom: `1.5px solid ${S.black}`, paddingBottom: 14, marginBottom: 28,
+            display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button className="ng-btn-g" onClick={onCancel}>← CANCEL</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Star />
+              <span style={{ fontSize: 10, letterSpacing: "0.18em", color: S.gray }}>{isEdit ? "EDIT ENTRY" : "NEW ENTRY"}</span>
+            </div>
+          </div>
+
+          <h1 className="ng-xl" style={{ fontSize: 64, marginBottom: 28 }}>
+            {isEdit ? "EDIT" : "PRACTICE"}<br /><span style={{ color: S.red }}>LOG</span>
+          </h1>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 22 }}>
+            <div>
+              <div className="ng-lbl">/ DATE</div>
+              <div style={{ borderBottom: `1.5px solid ${S.black}`, paddingBottom: 6 }}>
+                <input type="date" value={form.date} onChange={e => set("date", e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <div className="ng-lbl">/ TITLE</div>
+              <div style={{ borderBottom: `1.5px solid ${S.black}`, paddingBottom: 6 }}>
+                <input type="text" placeholder="面打ちの稽古..." value={form.title} onChange={e => set("title", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <div className="ng-lbl">/ CATEGORY</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+              {TAGS.map(tag => (
+                <button key={tag} className={`ng-tag${form.tags.includes(tag) ? " on" : ""}`} onClick={() => toggleTag(tag)}>{tag}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ borderLeft: `3px solid ${S.red}`, paddingLeft: 14, marginBottom: 28 }}>
+            <div className="ng-lbl">/ MEMO</div>
+            <textarea value={form.content} onChange={e => set("content", e.target.value)}
+              placeholder="指導された内容、練習した技、気になったこと..." rows={8} />
+          </div>
+
+          <button className="ng-btn-p" onClick={() => { if (form.content.trim() || form.title.trim()) onSave({ ...form, id: form.id || Date.now().toString() }); }}>
+            {isEdit ? "UPDATE ENTRY →" : "SAVE ENTRY →"}
+          </button>
+        </div>
+      );
+    }
+
+    function App() {
+      const [logs, setLogs] = useState(() => loadLogs());
+      const [view, setView] = useState("list");
+      const [selected, setSelected] = useState(null);
+      const [search, setSearch] = useState("");
+
+      const persist = (u) => { setLogs(u); saveLogs(u); };
+      const handleSave = e => { persist([e, ...logs]); setView("list"); };
+      const handleUpdate = e => { persist(logs.map(l => l.id === e.id ? e : l)); setSelected(e); setView("detail"); };
+      const handleDelete = id => { persist(logs.filter(l => l.id !== id)); setSelected(null); setView("list"); };
+
+      const downloadCSV = () => {
+        const header = ["日付", "タイトル", "カテゴリ", "メモ"];
+        const rows = logs.map(l => [
+          l.date,
+          l.title || "",
+          (l.tags || []).join("・"),
+          (l.content || "").replace(/\n/g, " "),
+        ]);
+        const csv = [header, ...rows]
+          .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+          .join("\n");
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "keiko-log.csv"; a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const filtered = logs.filter(l =>
+        !search || [l.title, l.content, ...(l.tags || [])].some(s => s?.includes(search))
+      );
+
+      return (
+        <div className="ng-app">
+          <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 20px 60px" }}>
+
+            {view === "form" && <LogForm onSave={handleSave} onCancel={() => setView("list")} />}
+            {view === "edit" && selected && <LogForm initial={selected} onSave={handleUpdate} onCancel={() => setView("detail")} />}
+            {view === "detail" && selected && <LogDetail log={selected} onClose={() => { setSelected(null); setView("list"); }} onDelete={handleDelete} onEdit={() => setView("edit")} />}
+
+            {view === "list" && <>
+              <div style={{ borderBottom: `2px solid ${S.black}`, paddingBottom: 16, marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <Cross size={11} /><Cross size={11} />
+                      <span style={{ fontSize: 10, letterSpacing: "0.22em", color: S.gray }}>TRAINING JOURNAL</span>
+                    </div>
+                    <h1 className="ng-xl" style={{ fontSize: 68 }}>
+                      KEIKO<br />
+                      <span style={{ color: S.red, fontSize: 40 }}>LOG</span>
+                    </h1>
+                  </div>
+                  <div style={{ textAlign: "right", paddingBottom: 2 }}>
+                    <div className="ng-xl" style={{ fontSize: 64, color: S.lightgray, lineHeight: 1 }}>
+                      {String(logs.length).padStart(3, "0")}
+                    </div>
+                    <div style={{ fontSize: 10, letterSpacing: "0.12em", color: S.gray }}>ENTRIES</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 24 }}>
+                <div style={{ flex: 1, borderBottom: `1.5px solid ${S.lightgray}`, display: "flex", alignItems: "center", gap: 8, paddingBottom: 6 }}>
+                  <Cross size={10} color={S.gray} />
+                  <input type="search" placeholder="SEARCH..." value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ fontSize: 12, letterSpacing: "0.08em", fontFamily: "Space Mono, monospace" }} />
+                </div>
+                <button className="ng-btn-p" onClick={() => setView("form")}>+ NEW</button>
+              </div>
+
+              {logs.length === 0 && (
+                <div style={{ paddingTop: 48, textAlign: "center" }}>
+                  <div className="ng-xl" style={{ fontSize: 120, color: S.lightgray }}>00</div>
+                  <p style={{ fontSize: 10, letterSpacing: "0.14em", color: S.gray, marginTop: 4 }}>NO ENTRIES YET</p>
+                </div>
+              )}
+
+              {filtered.length === 0 && logs.length > 0 && (
+                <p style={{ fontSize: 11, color: S.gray, letterSpacing: "0.1em" }}>NO RESULTS FOUND</p>
+              )}
+
+              <div>
+                {filtered.map((log, i) => (
+                  <LogCard key={log.id} log={log} idx={i}
+                    onClick={() => { setSelected(log); setView("detail"); }}
+                    onDelete={handleDelete} />
+                ))}
+              </div>
+              {filtered.length > 0 && <div style={{ borderTop: `1.5px solid ${S.black}` }} />}
+
+              {logs.length > 0 && (
+                <div style={{ marginTop: 28, display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                    {TAGS.slice(0, 5).map(tag => {
+                      const c = logs.filter(l => l.tags?.includes(tag)).length;
+                      return c > 0 ? (
+                        <div key={tag} style={{ textAlign: "center" }}>
+                          <div className="ng-xl" style={{ fontSize: 32, color: S.red }}>{c}</div>
+                          <div style={{ fontSize: 10, color: S.gray, letterSpacing: "0.06em" }}>{tag}</div>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                  <button className="ng-btn-g" onClick={downloadCSV} style={{ flexShrink: 0 }}>
+                    ↓ CSV
+                  </button>
+                </div>
+              )}
+            </>}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
